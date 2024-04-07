@@ -26,9 +26,6 @@ fn main() -> Result<()> {
     let mut ftp2 = FtpStream::connect("ftp2.grandis.nu:21")?;
     ftp2.login(login.username, login.password)?;
 
-    //let mut localfiles = vec![];
-    //let mut remotefiles: Vec<whdload::WhdloadItem> = vec![];
-
     let (localfiles, remotefiles) = thread::scope(|s| {
         let t1 = s.spawn(
             localfiles::find_local_files
@@ -42,18 +39,19 @@ fn main() -> Result<()> {
     let local = localfiles?;
     let remote = remotefiles?;
 
+    //local.retain(|w| remote.binary_search(w).is_err());
+    for rf in &remote {
+        if local.binary_search(rf).is_err() {
+            println!("dl: {:?}", rf)
+        }
+    }
 
-    // let t1 = thread::spawn(|| {
-    //     localfiles::find_local_files()
-    // });
-    
-    // let t2 = thread::spawn(|| {
-    //     remotefiles::find_remote_files(&mut ftp2)
-    // });
+    for lf in &local {
+        if remote.binary_search(lf).is_err() {
+            println!("del: {:?}", lf)
+        }
+    }
 
-
-    println!("l: {:#?}", local);
-    println!("r: {:#?}", remote);
 
     ftp2.quit()?;
     Ok(())

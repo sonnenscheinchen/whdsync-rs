@@ -13,16 +13,12 @@ const ZIP_HEADER: &[u8; 4] = &[0x50, 0x4b, 0x03, 0x04];
 
 pub fn find_remote_files(stream: &mut FtpStream) -> Result<Vec<WhdloadItem>> {
     let mut remote_files = vec![];
-    let mut dat_files = vec![];
     stream.cwd("Retroplay WHDLoad Packs")?;
 
-    for line in stream.list(None)?.iter() {
-        if let Ok(f) = list::File::from_posix_line(line) {
-            if f.is_file() && f.name().starts_with("Commodore Amiga - WHDLoad") {
-                dat_files.push(f);
-            }
-        }
-    }
+    let dat_files: Vec<list::File> = stream.list(None)?.iter()
+        .filter_map(|f| list::File::from_posix_line(f).ok())
+        .filter(|f| f.is_file() && f.name().starts_with("Commodore Amiga - WHDLoad"))
+        .collect();
 
     let current_dir = current_dir()?;
     for dat in dat_files {
