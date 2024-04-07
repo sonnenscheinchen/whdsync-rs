@@ -12,7 +12,7 @@ use crate::whdload::WhdloadItem;
 const ZIP_HEADER: &[u8; 4] = &[0x50, 0x4b, 0x03, 0x04];
 
 pub fn find_remote_files(stream: &mut FtpStream) -> Result<Vec<WhdloadItem>> {
-    let mut remote_files = vec![];
+    let mut remote_files: Vec<WhdloadItem> = Vec::with_capacity(5000);
     stream.cwd("Retroplay WHDLoad Packs")?;
 
     let dat_files: Vec<list::File> = stream.list(None)?.iter()
@@ -33,7 +33,8 @@ pub fn find_remote_files(stream: &mut FtpStream) -> Result<Vec<WhdloadItem>> {
             retr
         };
         let xml_string = unzip_data(&data)?;
-        remote_files.append(&mut parse_xml(xml_string)?);
+        parse_xml(xml_string, &mut remote_files)?;
+
     }
     remote_files.sort_unstable();
     Ok(remote_files)
@@ -66,8 +67,7 @@ fn unzip_data(mut data: &[u8]) -> Result<String> {
     }
 }
 
-fn parse_xml(xml_string: String) -> Result<Vec<WhdloadItem>> {
-    let mut set = vec![];
+fn parse_xml(xml_string: String, set: &mut Vec<WhdloadItem>) -> Result<()> {
     let doc = roxmltree::Document::parse(&xml_string)?;
     let mut descendants = doc.descendants();
     let description = descendants
@@ -82,5 +82,5 @@ fn parse_xml(xml_string: String) -> Result<Vec<WhdloadItem>> {
             set.push(WhdloadItem {path, size});
         }
     }
-    Ok(set)
+    Ok(())
 }
