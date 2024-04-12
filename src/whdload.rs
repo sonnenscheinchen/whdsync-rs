@@ -1,5 +1,7 @@
-use std::{os::unix::fs::MetadataExt, path::PathBuf};
-use glob::GlobError;
+use std::os::unix::fs::MetadataExt;
+use std::path::PathBuf;
+use std::convert::TryFrom;
+use anyhow::Error;
 
 
 #[derive(Debug, PartialOrd, PartialEq, Ord, Eq)]
@@ -8,11 +10,13 @@ pub struct WhdloadItem {
     pub size: u64,
 }
 
-impl WhdloadItem {
-    pub fn new_from_path(p: Result<&PathBuf, &GlobError>) -> Option<WhdloadItem> {
-        let size = p.ok()?.metadata().ok()?.size();
-        let path = p.ok()?.to_string_lossy().to_string();
-        Some(WhdloadItem {
+impl TryFrom<PathBuf> for WhdloadItem {
+    type Error = Error;
+
+    fn try_from(p: PathBuf) -> Result<Self, Self::Error> {
+        let size = p.metadata()?.size();
+        let path = p.to_string_lossy().to_string();
+        Ok(WhdloadItem {
             path,
             size,
         })
