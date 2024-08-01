@@ -1,42 +1,49 @@
-use std::io::{BufWriter, Write};
-use std::{env::current_dir, os::unix::fs::MetadataExt};
-use std::fs::read;
-use std::fs::File;
-use suppaftp::{FtpStream, list};
-use anyhow::{anyhow, Result};
-use zune_inflate::{DeflateDecoder, DeflateOptions};
-use crc32fast::hash;
-use bytes::Buf;
+use crate::credentials::Credentials;
 use crate::whdload::WhdloadItem;
+use anyhow::{anyhow, Result};
+use bytes::Buf;
+use crc32fast::hash;
+use std::fs::{read, write};
+use std::path::PathBuf;
+use suppaftp::{list, types::FileType, FtpStream};
+use zune_inflate::{DeflateDecoder, DeflateOptions};
 
 const ZIP_HEADER: &[u8; 4] = &[0x50, 0x4b, 0x03, 0x04];
 
+pub fn create_ftp_stream(host: &str, login: &Credentials) -> Result<FtpStream> {
+    println!("Connecting to {host} ...");
+    let mut stream = FtpStream::connect(host)?;
+    stream.login(&login.username, &login.password)?;
+    stream.transfer_type(FileType::Binary)?;
+    stream.cwd("Retroplay WHDLoad Packs")?;
+    Ok(stream)
+}
+
 pub fn find_remote_files(stream: &mut FtpStream) -> Result<Vec<WhdloadItem>> {
     let mut remote_files: Vec<WhdloadItem> = Vec::with_capacity(5000);
-    stream.cwd("Retroplay WHDLoad Packs")?;
 
-    let dat_files: Vec<list::File> = stream.list(None)?.iter()
+    let dat_files: Vec<list::File> = stream
+        .list(None)?
+        .iter()
         .filter_map(|f| list::File::from_posix_line(f).ok())
         .filter(|f| f.is_file() && f.name().starts_with("Commodore Amiga - WHDLoad"))
         .collect();
 
-    let current_dir = current_dir()?;
     for dat in dat_files {
-        let local_file = current_dir.with_file_name(dat.name());
-        let data = if local_file.is_file() && local_file.metadata()?.size() == dat.size() as u64 {
+        let local_file = PathBuf::from(dat.name());
+        let data = if local_file.is_file() && local_file.metadata()?.len() == dat.size() as u64 {
             read(local_file)?
         } else {
             let retr = stream.retr_as_buffer(dat.name())?.into_inner();
-            let mut buffer = BufWriter::new(File::create(dat.name())?);
-            buffer.write_all(&retr)?;
-            buffer.flush()?;
+            write(dat.name(), &retr)?;
             retr
         };
         let xml_string = unzip_data(&data)?;
         parse_xml(xml_string, &mut remote_files)?;
-
     }
+
     remote_files.sort_unstable();
+    eprintln!("remote finished");
     Ok(remote_files)
 }
 
@@ -70,17 +77,20 @@ fn unzip_data(mut data: &[u8]) -> Result<String> {
 fn parse_xml(xml_string: String, set: &mut Vec<WhdloadItem>) -> Result<()> {
     let doc = roxmltree::Document::parse(&xml_string)?;
     let mut descendants = doc.descendants();
+
     let description = descendants
         .find_map(|n| n.has_tag_name("description").then(|| n.text().unwrap()))
         .unwrap();
+
     for machine_node in descendants.filter(|n| n.has_tag_name("machine")) {
         let letter = machine_node.attribute("name").unwrap();
         for rom_node in machine_node.descendants().filter(|n| n.has_tag_name("rom")) {
             let name = rom_node.attribute("name").unwrap();
             let size: u64 = rom_node.attribute("size").unwrap().parse()?;
             let path = format!("{description}/{letter}/{name}");
-            set.push(WhdloadItem {path, size});
+            set.push(WhdloadItem { path, size });
         }
     }
+
     Ok(())
 }

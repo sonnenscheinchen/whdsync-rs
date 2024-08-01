@@ -1,10 +1,10 @@
-use std::os::unix::fs::MetadataExt;
-use std::path::PathBuf;
+use anyhow::{Error, Result};
 use std::convert::TryFrom;
-use anyhow::Error;
+use std::fs::{create_dir_all, File};
+use std::io::{copy, BufReader, BufWriter, Read, Write};
+use std::path::PathBuf;
 
-
-#[derive(Debug, PartialOrd, PartialEq, Ord, Eq)]
+#[derive(Debug, PartialOrd, PartialEq, Ord, Eq, Clone)]
 pub struct WhdloadItem {
     pub path: String,
     pub size: u64,
@@ -14,11 +14,23 @@ impl TryFrom<PathBuf> for WhdloadItem {
     type Error = Error;
 
     fn try_from(p: PathBuf) -> Result<Self, Self::Error> {
-        let size = p.metadata()?.size();
+        let size = p.metadata()?.len();
         let path = p.to_string_lossy().to_string();
-        Ok(WhdloadItem {
-            path,
-            size,
-        })
+        Ok(WhdloadItem { path, size })
+    }
+}
+
+impl WhdloadItem {
+    pub fn save_file(&self, mut reader: impl Read) -> Result<()> {
+        let mut dir = PathBuf::from(&self.path);
+        dir.pop();
+        if !dir.is_dir() {
+            create_dir_all(&dir)?;
+        };
+        let mut outbuf = BufWriter::new(File::create(&self.path)?);
+        let mut inbuf = BufReader::new(&mut reader);
+        copy(&mut inbuf, &mut outbuf)?;
+        outbuf.flush()?;
+        Ok(())
     }
 }
