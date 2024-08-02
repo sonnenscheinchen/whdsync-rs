@@ -38,11 +38,8 @@ fn main() -> Result<()> {
 
     let mut to_download = vec![];
 
-    for rf in &remotefiles {
-        if localfiles.binary_search(rf).is_err() {
-            println!("dl: {:?}", rf);
-            to_download.push(rf.clone());
-        }
+    for f in remotefiles.difference(&localfiles) {
+        to_download.push(f.clone());
     }
 
     let num_downloads = to_download.len();
@@ -130,13 +127,11 @@ fn main() -> Result<()> {
     };
 
     if success {
-        println!("Finished successfully.");
-        for lf in &localfiles {
-            if remotefiles.binary_search(lf).is_err() {
-                println!("del: {:?}", lf)
-            }
+        for f in localfiles.difference(&remotefiles) {
+            println!("del: {:?}", f)
         }
         localfiles::remove_old_dats()?;
+        println!("Finished successfully.");
     } else {
         println!("Sync completed with errors.");
     }

@@ -1,5 +1,5 @@
 use crate::credentials::Credentials;
-use crate::whdload::WhdloadItem;
+use crate::whdload::{Collection, WhdloadItem};
 use anyhow::{anyhow, Result};
 use bytes::Buf;
 use crc32fast::hash;
@@ -19,8 +19,8 @@ pub fn create_ftp_stream(host: &str, login: &Credentials) -> Result<FtpStream> {
     Ok(stream)
 }
 
-pub fn find_remote_files(stream: &mut FtpStream) -> Result<Vec<WhdloadItem>> {
-    let mut remote_files: Vec<WhdloadItem> = Vec::with_capacity(5000);
+pub fn find_remote_files(stream: &mut FtpStream) -> Result<Collection> {
+    let mut remote_files = Collection::with_capacity(5000);
 
     let dat_files: Vec<list::File> = stream
         .list(None)?
@@ -41,8 +41,6 @@ pub fn find_remote_files(stream: &mut FtpStream) -> Result<Vec<WhdloadItem>> {
         let xml_string = unzip_data(&data)?;
         parse_xml(xml_string, &mut remote_files)?;
     }
-
-    remote_files.sort_unstable();
     eprintln!("remote finished");
     Ok(remote_files)
 }
@@ -74,7 +72,7 @@ fn unzip_data(mut data: &[u8]) -> Result<String> {
     }
 }
 
-fn parse_xml(xml_string: String, set: &mut Vec<WhdloadItem>) -> Result<()> {
+fn parse_xml(xml_string: String, set: &mut Collection) -> Result<()> {
     let doc = roxmltree::Document::parse(&xml_string)?;
     let mut descendants = doc.descendants();
 
@@ -88,7 +86,7 @@ fn parse_xml(xml_string: String, set: &mut Vec<WhdloadItem>) -> Result<()> {
             let name = rom_node.attribute("name").unwrap();
             let size: u64 = rom_node.attribute("size").unwrap().parse()?;
             let path = format!("{description}/{letter}/{name}");
-            set.push(WhdloadItem { path, size });
+            set.insert(WhdloadItem { path, size });
         }
     }
 

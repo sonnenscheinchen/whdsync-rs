@@ -1,6 +1,5 @@
 use crate::whdload::WhdloadItem;
 use anyhow::Result;
-use core::time::Duration;
 use std::sync::Mutex;
 use suppaftp::{FtpError, FtpStream, Status};
 
@@ -13,7 +12,7 @@ pub fn run_downloader(items: QUEUE, ftp: &mut FtpStream, failed: REQUEUE) -> Res
         if let Some(item) = maybe_item {
             println!("{:?}: {}", ftp, item.path);
             match ftp.retr_as_stream(&item.path.replace(" ", "_")) {
-            //match ftp.retr_as_stream(&item.path) {
+                //match ftp.retr_as_stream(&item.path) {
                 Ok(mut stream) => {
                     item.save_file(&mut stream)?;
                     ftp.finalize_retr_stream(stream)?;

@@ -1,10 +1,13 @@
 use anyhow::{Error, Result};
+use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::fs::{create_dir_all, File};
 use std::io::{copy, BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 
-#[derive(Debug, PartialOrd, PartialEq, Ord, Eq, Clone)]
+pub type Collection = HashSet<WhdloadItem>;
+
+#[derive(Hash, Eq, PartialEq, Debug, Clone)]
 pub struct WhdloadItem {
     pub path: String,
     pub size: u64,

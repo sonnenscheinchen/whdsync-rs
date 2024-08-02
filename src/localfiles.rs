@@ -1,4 +1,4 @@
-use crate::whdload::WhdloadItem;
+use crate::whdload::{Collection, WhdloadItem};
 use anyhow::Result;
 use glob::glob;
 use std::path::PathBuf;
@@ -13,13 +13,13 @@ const CATEGORIES: [&str; 5] = [
 
 const LHA_FILES: &str = "Commodore Amiga - WHDLoad -*/[0|A-Z]/*.l??";
 
-pub fn find_local_files() -> Vec<WhdloadItem> {
-    let mut files: Vec<WhdloadItem> = glob(LHA_FILES)
+pub fn find_local_files() -> Collection {
+    let files: Collection = glob(LHA_FILES)
         .unwrap()
         .filter_map(|f| f.ok())
         .filter_map(|e| WhdloadItem::try_from(e).ok())
         .collect();
-    files.sort_unstable();
+    //files.sort_unstable();
     eprintln!("local finished");
     files
 }
