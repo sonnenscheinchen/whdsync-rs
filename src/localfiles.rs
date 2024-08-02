@@ -14,13 +14,13 @@ const CATEGORIES: [&str; 5] = [
 const LHA_FILES: &str = "Commodore Amiga - WHDLoad -*/[0|A-Z]/*.l??";
 
 pub fn find_local_files() -> Collection {
+    eprint!("Collecting local files.");
     let files: Collection = glob(LHA_FILES)
         .unwrap()
         .filter_map(|f| f.ok())
         .filter_map(|e| WhdloadItem::try_from(e).ok())
         .collect();
-    //files.sort_unstable();
-    eprintln!("local finished");
+    eprint!("Collecting local files finished.");
     files
 }
 

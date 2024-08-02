@@ -5,6 +5,7 @@ use bytes::Buf;
 use crc32fast::hash;
 use std::fs::{read, write};
 use std::path::PathBuf;
+use std::thread;
 use suppaftp::{list, types::FileType, FtpStream};
 use zune_inflate::{DeflateDecoder, DeflateOptions};
 
@@ -20,6 +21,8 @@ pub fn create_ftp_stream(host: &str, login: &Credentials) -> Result<FtpStream> {
 }
 
 pub fn find_remote_files(stream: &mut FtpStream) -> Result<Collection> {
+    eprintln!("Collecting remote files.");
+
     let mut remote_files = Collection::with_capacity(5000);
 
     let dat_files: Vec<list::File> = stream
@@ -28,6 +31,8 @@ pub fn find_remote_files(stream: &mut FtpStream) -> Result<Collection> {
         .filter_map(|f| list::File::from_posix_line(f).ok())
         .filter(|f| f.is_file() && f.name().starts_with("Commodore Amiga - WHDLoad"))
         .collect();
+
+    let mut threads = Vec::with_capacity(dat_files.len());
 
     for dat in dat_files {
         let local_file = PathBuf::from(dat.name());
@@ -38,10 +43,15 @@ pub fn find_remote_files(stream: &mut FtpStream) -> Result<Collection> {
             write(dat.name(), &retr)?;
             retr
         };
-        let xml_string = unzip_data(&data)?;
-        parse_xml(xml_string, &mut remote_files)?;
+
+        threads.push(thread::spawn(move || parse_xml(unzip_data(&data)?)));
     }
-    eprintln!("remote finished");
+
+    for t in threads {
+        remote_files.extend(t.join().unwrap()?);
+    }
+
+    eprintln!("Collecting remote files finished.");
     Ok(remote_files)
 }
 
@@ -72,8 +82,13 @@ fn unzip_data(mut data: &[u8]) -> Result<String> {
     }
 }
 
-fn parse_xml(xml_string: String, set: &mut Collection) -> Result<()> {
-    let opts = roxmltree::ParsingOptions{allow_dtd: true, nodes_limit: 100_000};
+fn parse_xml(xml_string: String) -> Result<Vec<WhdloadItem>> {
+    let mut result: Vec<WhdloadItem> = Vec::with_capacity(4000);
+
+    let opts = roxmltree::ParsingOptions {
+        allow_dtd: true,
+        nodes_limit: 100_000,
+    };
     let doc = roxmltree::Document::parse_with_options(&xml_string, opts)?;
     let mut descendants = doc.descendants();
 
@@ -87,9 +102,9 @@ fn parse_xml(xml_string: String, set: &mut Collection) -> Result<()> {
             let name = rom_node.attribute("name").unwrap();
             let size: u64 = rom_node.attribute("size").unwrap().parse()?;
             let path = format!("{description}/{letter}/{name}");
-            set.insert(WhdloadItem { path, size });
+            result.push(WhdloadItem { path, size });
         }
     }
 
-    Ok(())
+    Ok(result)
 }
