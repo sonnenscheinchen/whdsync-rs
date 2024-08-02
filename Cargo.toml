@@ -9,8 +9,8 @@ edition = "2021"
 glob = "0.3"
 anyhow = "1.0"
 suppaftp = "6.0"
-zune-inflate={ version="0.2", default-features=false}
+zune-inflate= { version="0.2", default-features=false }
 crc32fast = "1.4"
 bytes = "1.6"
-roxmltree = "0.18"
+roxmltree = { version="0.20", default-features=false, features = ["std"] }
 rust-netrc = "0.1"

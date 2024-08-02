@@ -73,7 +73,8 @@ fn unzip_data(mut data: &[u8]) -> Result<String> {
 }
 
 fn parse_xml(xml_string: String, set: &mut Collection) -> Result<()> {
-    let doc = roxmltree::Document::parse(&xml_string)?;
+    let opts = roxmltree::ParsingOptions{allow_dtd: true, nodes_limit: 100_000};
+    let doc = roxmltree::Document::parse_with_options(&xml_string, opts)?;
     let mut descendants = doc.descendants();
 
     let description = descendants
