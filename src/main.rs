@@ -2,6 +2,7 @@ use crate::download::run_downloader;
 use crate::whdload::WhdloadItem;
 use anyhow::{bail, Result};
 use std::env::{args, set_current_dir};
+use std::fs::remove_file;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::thread;
@@ -128,7 +129,8 @@ fn main() -> Result<()> {
 
     if success {
         for f in localfiles.difference(&remotefiles) {
-            println!("del: {:?}", f)
+            println!("del: {:?}", f);
+            let _ = remove_file(&f.path);
         }
         localfiles::remove_old_dats()?;
         println!("Finished successfully.");

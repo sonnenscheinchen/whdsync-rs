@@ -1,7 +1,7 @@
 use crate::whdload::{Collection, WhdloadItem};
 use anyhow::Result;
 use glob::glob;
-use std::path::PathBuf;
+use std::fs::remove_file;
 
 const CATEGORIES: [&str; 5] = [
     "Commodore Amiga - WHDLoad - Demos (*).zip",
@@ -26,18 +26,20 @@ pub fn find_local_files() -> Collection {
 
 pub fn remove_old_dats() -> Result<()> {
     for cat in CATEGORIES {
-        let mut dats: Vec<PathBuf> = glob(cat).unwrap().filter_map(|f| f.ok()).collect();
-        dats.sort_unstable_by(|a, b| {
-            a.metadata()
-                .unwrap()
-                .modified()
-                .unwrap()
-                .cmp(&b.metadata().unwrap().modified().unwrap())
+        let mut dats: Vec<String> = glob(cat)
+            .unwrap()
+            .filter_map(|p| p.ok())
+            .map(|p| p.to_string_lossy().into())
+            .collect();
+        dats.sort_unstable_by(|left, right| {
+            let split_left = left.split(|c| c == '-').rev();
+            let split_right = right.split(|c| c == '-').rev();
+            split_left.cmp(split_right)
         });
-        println!("{:?}", dats);
         if dats.pop().is_some() {
             for d in dats {
-                println!("del: {}", d.display());
+                println!("del: {}", d);
+                let _ = remove_file(d);
             }
         }
     }
