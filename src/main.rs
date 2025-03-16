@@ -1,30 +1,33 @@
+mod credentials;
 mod download;
 mod local;
 mod remote;
 mod whdload;
-mod credentials;
+use anyhow::{bail, Result};
+use credentials::Credentials;
+use download::*;
+use local::{find_local_files, remove_old_dats};
+use remote::{create_ftp_stream, find_remote_files};
 use std::env::{args, set_current_dir};
 use std::fs::remove_file;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::thread;
-use download::*;
-use anyhow::{bail, Result};
-use credentials::Credentials;
-use remote::{create_ftp_stream, find_remote_files};
-use local::{find_local_files, remove_old_dats};
 use whdload::WhdloadItem;
-
 
 fn main() -> Result<()> {
     println!("whdsnc2 version 0.2.0");
 
     let target_dir = match args().nth(1) {
-        Some(dir) => PathBuf::from(dir),
+        Some(arg) => PathBuf::from(arg),
         None => bail!("Need a valid target directory."),
     };
 
     set_current_dir(&target_dir)?;
+
+    let remove_old_files = args()
+        .nth(2)
+        .is_some_and(|arg| arg == "-d" || arg == "--delete");
 
     let login = Credentials::new_from_netrc().unwrap_or_default();
     let mut ftp2 = create_ftp_stream(FTP2, &login)?;
@@ -46,9 +49,9 @@ fn main() -> Result<()> {
 
     let failed_downloads = match download(to_download, &mut ftp2, &login) {
         Ok(f) => f,
-        Err(e) => return Err(e)
+        Err(e) => return Err(e),
     };
-    
+
     let num_failed = failed_downloads.len();
 
     let success = if num_failed == 0 {
@@ -67,10 +70,14 @@ fn main() -> Result<()> {
 
     if success {
         for f in localfiles.difference(&remotefiles) {
-            println!("[DEL]: {}", f.path);
-            let _ = remove_file(&f.path);
+            if remove_old_files {
+                println!("[DEL]: {}", f.path);
+                let _ = remove_file(&f.path);
+            } else {
+                println!("[KEEP]: {}", f.path);
+            }
         }
-        remove_old_dats();
+        remove_old_files.then(remove_old_dats);
         println!("Finished successfully.");
     } else {
         println!("Sync completed with errors.");
