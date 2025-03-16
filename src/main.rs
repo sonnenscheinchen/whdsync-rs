@@ -16,7 +16,7 @@ use std::thread;
 use whdload::WhdloadItem;
 
 fn main() -> Result<()> {
-    println!("whdsnc2 version 0.3.0");
+    println!("whdsync-rs version 0.3.0");
 
     let target_dir = match args().nth(1) {
         Some(arg) => PathBuf::from(arg),

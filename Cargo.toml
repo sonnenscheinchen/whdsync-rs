@@ -1,5 +1,5 @@
 [package]
-name = "whdsnc2"
+name = "whdsync-rs"
 version = "0.3.0"
 edition = "2021"
 
