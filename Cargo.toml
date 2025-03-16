@@ -1,6 +1,6 @@
 [package]
 name = "whdsnc2"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -8,9 +8,9 @@ edition = "2021"
 [dependencies]
 glob = "0.3"
 anyhow = "1.0"
-suppaftp = "6.0"
-zune-inflate= { version="0.2", default-features=false }
+suppaftp = "6.1"
+zune-inflate = { version = "0.2", default-features = false }
 crc32fast = "1.4"
-bytes = "1.6"
-roxmltree = { version="0.20", default-features=false, features = ["std"] }
+bytes = "1.10"
+roxmltree = { version = "0.20", default-features = false, features = ["std"] }
 rust-netrc = "0.1"

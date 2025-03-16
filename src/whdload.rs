@@ -24,7 +24,7 @@ impl TryFrom<PathBuf> for WhdloadItem {
 }
 
 impl WhdloadItem {
-    pub fn save_file(&self, mut reader: impl Read) -> Result<()> {
+    pub fn save_file(&self, mut reader: impl Read) -> Result<(), Error> {
         let mut dir = PathBuf::from(&self.path);
         dir.pop();
         if !dir.is_dir() {

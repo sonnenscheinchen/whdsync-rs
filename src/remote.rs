@@ -44,7 +44,9 @@ pub fn find_remote_files(stream: &mut FtpStream) -> Result<Collection> {
             retr
         };
 
-        threads.push(thread::spawn(move || parse_xml(unzip_data(&data)?)));
+        threads.push(thread::spawn(move || {
+            parse_xml(unzip_data(&data)?).ok_or(anyhow!("Failed to parse xml"))
+        }));
     }
 
     for t in threads {
@@ -82,29 +84,32 @@ fn unzip_data(mut data: &[u8]) -> Result<String> {
     }
 }
 
-fn parse_xml(xml_string: String) -> Result<Vec<WhdloadItem>> {
+fn parse_xml(xml_string: String) -> Option<Vec<WhdloadItem>> {
     let mut result: Vec<WhdloadItem> = Vec::with_capacity(4000);
 
     let opts = roxmltree::ParsingOptions {
         allow_dtd: true,
         nodes_limit: 100_000,
     };
-    let doc = roxmltree::Document::parse_with_options(&xml_string, opts)?;
+    let doc = roxmltree::Document::parse_with_options(&xml_string, opts).ok()?;
     let mut descendants = doc.descendants();
 
-    let description = descendants
-        .find_map(|n| n.has_tag_name("description").then(|| n.text().unwrap()))
-        .unwrap();
+    let maybe_description =
+        descendants.find_map(|n| n.has_tag_name("description").then(|| n.text()))?;
+
+    let description = match maybe_description {
+        Some(d) => d,
+        None => return None,
+    };
 
     for machine_node in descendants.filter(|n| n.has_tag_name("machine")) {
-        let letter = machine_node.attribute("name").unwrap();
+        let letter = machine_node.attribute("name")?;
         for rom_node in machine_node.descendants().filter(|n| n.has_tag_name("rom")) {
-            let name = rom_node.attribute("name").unwrap();
-            let size: u64 = rom_node.attribute("size").unwrap().parse()?;
+            let name = rom_node.attribute("name")?;
+            let size: u64 = rom_node.attribute("size")?.parse().ok()?;
             let path = format!("{description}/{letter}/{name}");
             result.push(WhdloadItem { path, size });
         }
     }
-
-    Ok(result)
+    Some(result)
 }

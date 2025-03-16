@@ -1,32 +1,37 @@
 use crate::whdload::WhdloadItem;
-use anyhow::Result;
+use anyhow::{Error, Result};
 use std::sync::Mutex;
 use suppaftp::{FtpError, FtpStream, Status};
 
-type QUEUE<'a> = &'a Mutex<Vec<WhdloadItem>>;
-type REQUEUE<'a> = Option<&'a Mutex<Vec<WhdloadItem>>>;
+type Queue<'a> = &'a Mutex<Vec<WhdloadItem>>;
+type Requeue = Vec<WhdloadItem>;
 
-pub fn run_downloader(items: QUEUE, ftp: &mut FtpStream, failed: REQUEUE) -> Result<()> {
+pub fn run_downloader(
+    items: Queue,
+    ftp: &mut FtpStream,
+    is_primary: bool,
+    tag: &str,
+) -> Result<Requeue, Error> {
+    let mut requeue = vec![];
     loop {
         let maybe_item = { items.lock().unwrap().pop() };
         if let Some(item) = maybe_item {
-            println!("{:?}: {}", ftp, item.path);
-            match ftp.retr_as_stream(&item.path.replace(" ", "_")) {
-                //match ftp.retr_as_stream(&item.path) {
+            println!("[{}]: {}", tag, item.path);
+            match ftp.retr_as_stream(item.path.replace(" ", "_")) {
                 Ok(mut stream) => {
                     item.save_file(&mut stream)?;
                     ftp.finalize_retr_stream(stream)?;
                 }
                 Err(error) => {
-                    if let Some(f) = failed {
-                        // requeue silently
-                        f.lock().unwrap().push(item);
+                    if !is_primary {
+                        requeue.push(item); // requeue silently
                     } else {
-                        eprintln!("Failed to download {}", &item.path)
+                        eprintln!("Failed to download {} from primary FTP server", &item.path);
+                        return Err(error.into());
                     }
                     match error {
                         FtpError::UnexpectedResponse(response) => match response.status {
-                            Status::FileUnavailable => {} // ignore here, requeued earlier
+                            Status::FileUnavailable => {} // ignore, requeued earlier
                             _ => return Err(FtpError::UnexpectedResponse(response).into()),
                         },
                         _ => return Err(error.into()),
@@ -37,6 +42,5 @@ pub fn run_downloader(items: QUEUE, ftp: &mut FtpStream, failed: REQUEUE) -> Res
             break;
         }
     }
-    //println!("end: {:?}", d);
-    Ok(())
+    Ok(requeue)
 }
