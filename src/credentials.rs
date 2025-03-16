@@ -11,7 +11,6 @@ pub struct Credentials {
 impl Credentials {
     pub fn new_from_netrc() -> Option<Credentials> {
         let nrc = Netrc::new().ok()?;
-        dbg!(&nrc);
         for (host, auth) in nrc.hosts {
             if FTP_SERVERS.iter().any(|s| {
                 s.split(':')
