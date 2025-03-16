@@ -1,6 +1,6 @@
 use super::remote::create_ftp_stream;
-use super::Credentials;
 use super::whdload::WhdloadItem;
+use super::Credentials;
 use anyhow::{Error, Result};
 use std::sync::Mutex;
 use std::thread;
@@ -97,8 +97,9 @@ pub fn run_downloader(
     loop {
         let maybe_item = { items.lock().unwrap().pop() };
         if let Some(item) = maybe_item {
-            println!("[{}]: {}", tag, item.path);
-            match ftp.retr_as_stream(item.path.replace(" ", "_")) {
+            let path = item.get_remote_path();
+            println!("[{}]: {}", tag, path);
+            match ftp.retr_as_stream(&path) {
                 Ok(mut stream) => {
                     item.save_file(&mut stream)?;
                     ftp.finalize_retr_stream(stream)?;
@@ -107,7 +108,7 @@ pub fn run_downloader(
                     if !is_primary {
                         requeue.push(item); // requeue silently
                     } else {
-                        eprintln!("Failed to download {} from primary FTP server", &item.path);
+                        eprintln!("Failed to download {} from primary FTP server", path);
                         return Err(error.into());
                     }
                     match error {

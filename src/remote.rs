@@ -108,7 +108,7 @@ fn parse_xml(xml_string: String) -> Option<Vec<WhdloadItem>> {
             let name = rom_node.attribute("name")?;
             let size: u64 = rom_node.attribute("size")?.parse().ok()?;
             let path = format!("{description}/{letter}/{name}");
-            result.push(WhdloadItem { path, size });
+            result.push(WhdloadItem::new(path, size));
         }
     }
     Some(result)

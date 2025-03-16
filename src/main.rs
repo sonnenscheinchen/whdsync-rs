@@ -16,7 +16,7 @@ use std::thread;
 use whdload::WhdloadItem;
 
 fn main() -> Result<()> {
-    println!("whdsnc2 version 0.2.0");
+    println!("whdsnc2 version 0.3.0");
 
     let target_dir = match args().nth(1) {
         Some(arg) => PathBuf::from(arg),
@@ -70,11 +70,12 @@ fn main() -> Result<()> {
 
     if success {
         for f in localfiles.difference(&remotefiles) {
+            let path = f.get_local_path();
             if remove_old_files {
-                println!("[DEL]: {}", f.path);
-                let _ = remove_file(&f.path);
+                println!("[DEL]: {}", path);
+                let _ = remove_file(&path);
             } else {
-                println!("[KEEP]: {}", f.path);
+                println!("[KEEP]: {}", path);
             }
         }
         remove_old_files.then(remove_old_dats);
