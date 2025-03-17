@@ -1,53 +1,41 @@
-name: Release Rust Binaries (Linux & Cross-Compiled)
+name: Release
+
+permissions:
+  contents: write
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - v[0-9]+.*
 
 jobs:
-  build:
+  create-release:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: taiki-e/create-gh-release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
+  upload-assets:
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          bin: whdsync-rs
+          include: LICENSE,README.md
+          leading-dir: true
+          target: ${{ matrix.target }}
+          tar: unix
+          zip: windows
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Install Cross Compilation Tools
-      run: sudo apt-get install -y gcc-mingw-w64
-      
-    - name: Install Windows target
-      run: rustup target add x86_64-pc-windows-gnu
-      
-    - name: Build Linux binary
-      run: cargo build --release
-
-    - name: Build cross-compiled Windows binary
-      run: cargo build --release --target x86_64-pc-windows-gnu
-
-    - name: Package Linux binary
-      run: tar -czvf "${{ github.ref_name }}-linux.tar.gz" -C ./target/release/whdsync-rs
-
-    - name: Package cross-compiled Windows binary
-      run: zip -j "${{ github.ref_name }}-windows.zip" ./target/x86_64-pc-windows-gnu/release/whdsync-rs.exe
-
-    - name: Upload Linux binary
-      uses: actions/upload-release-asset@v1
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: "${{ github.ref_name }}-linux.tar.gz"
-        asset_name: "${{ github.ref_name }}-linux.tar.gz"
-        asset_content_type: application/gzip
-
-    - name: Upload Windows binary
-      uses: actions/upload-release-asset@v1
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: "${{ github.ref_name }}-windows.zip"
-        asset_name: "${{ github.ref_name }}-windows.zip"
-        asset_content_type: application/zip
