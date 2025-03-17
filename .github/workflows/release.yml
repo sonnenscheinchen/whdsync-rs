@@ -1,21 +1,50 @@
+name: Release Rust Binaries (Linux & Cross-Compiled)
+
 on:
   release:
-    types: [created]
+    types: [published]
 
 jobs:
-  release:
-    name: release ${{ matrix.target }}
+  build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [x86_64-pc-windows-gnu, x86_64-unknown-linux-musl]
+
     steps:
-      - uses: actions/checkout@master
-      - name: Compile and release
-        uses: rust-build/rust-build.action@v1.4.5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          RUSTTARGET: ${{ matrix.target }}
-          EXTRA_FILES: "README.md LICENSE"
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+
+    - name: Install Cross Compilation Tools
+      run: sudo apt-get install -y gcc-mingw-w64
+
+    - name: Build Linux binary
+      run: cargo build --release
+
+    - name: Build cross-compiled Windows binary
+      run: cargo build --release --target x86_64-pc-windows-gnu
+
+    - name: Package Linux binary
+      run: tar -czvf "${{ github.ref_name }}-linux.tar.gz" -C ./target/release/whdsync-rs
+
+    - name: Package cross-compiled Windows binary
+      run: zip -j "${{ github.ref_name }}-windows.zip" ./target/x86_64-pc-windows-gnu/release/whdsync-rs.exe
+
+    - name: Upload Linux binary
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: "${{ github.ref_name }}-linux.tar.gz"
+        asset_name: "${{ github.ref_name }}-linux.tar.gz"
+        asset_content_type: application/gzip
+
+    - name: Upload Windows binary
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: "${{ github.ref_name }}-windows.zip"
+        asset_name: "${{ github.ref_name }}-windows.zip"
+        asset_content_type: application/zip
