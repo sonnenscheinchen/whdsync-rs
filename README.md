@@ -15,7 +15,7 @@ cargo build --release
 The binary is `target/release/whdsync-rs`. Copy it anywhere you like.
 
 # Usage
-If you have an account on the FTP you can put your username/password in the [.netrc](https://www.gnu.org/software/inetutils/manual/html_node/The-_002enetrc-file.html) (not supported under Windows). This allows the tool to use two connections per server and probably avoids server-full-issues. If you start from scratch create a new directory and point the tool to it. This will basically match the "root" directory "Retroplay WHDLoad Packs" on the FTP.
+If you have an account on the FTP you can put your username/password in the [.netrc](https://www.gnu.org/software/inetutils/manual/html_node/The-_002enetrc-file.html) (not supported under Windows). You can also set the "TURRAN_USER" and "TURRAN_PASSOWRD" environment variables. This allows the tool to use two connections per server and probably avoids server-full-issues. If you start from scratch create a new directory and point the tool to it. This will basically match the "root" directory "Retroplay WHDLoad Packs" on the FTP.
 
 Run `whdsync-rs /path/to/target-dir` to download and update new files.
 Run `whdsync-rs /path/to/target-dir -d` or `whdsync-rs /path/to/target-dir --delete` to also delete old files.

@@ -1,7 +1,9 @@
 use super::{FTP1, FTP2, FTP3};
 use netrc::Netrc;
+use std::env::var;
 
 const FTP_SERVERS: &[&str] = &[FTP1, FTP2, FTP3];
+
 pub struct Credentials {
     pub username: String,
     pub password: String,
@@ -9,7 +11,17 @@ pub struct Credentials {
 }
 
 impl Credentials {
-    pub fn new_from_netrc() -> Option<Credentials> {
+    pub fn from_env() -> Option<Credentials> {
+        match (var("TURRAN_USER"), var("TURRAN_PASSWORD")) {
+            (Ok(username), Ok(password)) => Some(Credentials {
+                username,
+                password,
+                is_anonymous: false,
+            }),
+            (_, _) => None,
+        }
+    }
+    pub fn from_netrc() -> Option<Credentials> {
         let nrc = Netrc::new().ok()?;
         for (host, auth) in nrc.hosts {
             if FTP_SERVERS.iter().any(|s| {
@@ -39,7 +51,13 @@ impl Default for Credentials {
 }
 
 #[test]
-fn test_my_credentials() {
-    let c = Credentials::new_from_netrc().unwrap_or_default();
-    assert_eq!(false, c.is_anonymous)
+fn test_my_credentials_from_netrc() {
+    let c = Credentials::from_netrc();
+    assert!(c.is_some());
+}
+
+#[test]
+fn test_my_credentials_from_env() {
+    let c = Credentials::from_env();
+    assert!(c.is_some());
 }

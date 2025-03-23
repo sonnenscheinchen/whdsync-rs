@@ -29,7 +29,9 @@ fn main() -> Result<()> {
         .nth(2)
         .is_some_and(|arg| arg == "-d" || arg == "--delete");
 
-    let login = Credentials::new_from_netrc().unwrap_or_default();
+    let login = Credentials::from_env()
+        .or(Credentials::from_netrc())
+        .unwrap_or_default();
     let mut ftp2 = create_ftp_stream(FTP2, &login)?;
 
     let t = thread::spawn(find_local_files);
