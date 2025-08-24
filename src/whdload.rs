@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 pub type Collection = HashSet<WhdloadItem>;
 
-#[derive(Hash, Eq, PartialEq, Debug, Clone)]
+#[derive(Hash, Eq, PartialEq, PartialOrd, Ord, Debug, Clone)]
 pub struct WhdloadItem {
     path: String,
     size: u64,

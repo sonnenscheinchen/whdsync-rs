@@ -38,7 +38,7 @@ fn main() -> Result<()> {
     let remotefiles = find_remote_files(&mut ftp2)?;
     let localfiles = t.join().unwrap();
 
-    let to_download: Vec<WhdloadItem> = remotefiles.difference(&localfiles).cloned().collect();
+    let mut to_download: Vec<WhdloadItem> = remotefiles.difference(&localfiles).cloned().collect();
 
     let num_downloads = to_download.len();
 
@@ -49,10 +49,14 @@ fn main() -> Result<()> {
         println!("Downloading {num_downloads} files.");
     }
 
-    let failed_downloads = match download(to_download, &mut ftp2, &login) {
+    to_download.sort_unstable();
+
+    let mut failed_downloads = match download(to_download, &mut ftp2, &login) {
         Ok(f) => f,
         Err(e) => return Err(e),
     };
+
+    failed_downloads.sort_unstable();
 
     let num_failed = failed_downloads.len();
 
