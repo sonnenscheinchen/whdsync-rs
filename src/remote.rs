@@ -6,12 +6,12 @@ use crc32fast::hash;
 use std::fs::{read, write};
 use std::path::PathBuf;
 use std::thread;
-use suppaftp::{list, types::FileType, FtpStream};
+use suppaftp::{list, types::FileType, FtpError, FtpStream};
 use zune_inflate::{DeflateDecoder, DeflateOptions};
 
 const ZIP_HEADER: &[u8; 4] = &[0x50, 0x4b, 0x03, 0x04];
 
-pub fn create_ftp_stream(host: &str, login: &Credentials) -> Result<FtpStream> {
+pub fn create_ftp_stream(host: &str, login: &Credentials) -> Result<FtpStream, FtpError> {
     println!("Connecting to {host} ...");
     let mut stream = FtpStream::connect(host)?;
     stream.login(&login.username, &login.password)?;
@@ -94,13 +94,8 @@ fn parse_xml(xml_string: String) -> Option<Vec<WhdloadItem>> {
     let doc = roxmltree::Document::parse_with_options(&xml_string, opts).ok()?;
     let mut descendants = doc.descendants();
 
-    let maybe_description =
-        descendants.find_map(|n| n.has_tag_name("description").then(|| n.text()))?;
-
-    let description = match maybe_description {
-        Some(d) => d,
-        None => return None,
-    };
+    let description =
+        descendants.find_map(|n| n.has_tag_name("description").then(|| n.text()))??;
 
     for machine_node in descendants.filter(|n| n.has_tag_name("machine")) {
         let letter = machine_node.attribute("name")?;

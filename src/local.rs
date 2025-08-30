@@ -1,6 +1,6 @@
 use crate::whdload::{Collection, WhdloadItem};
 use glob::glob;
-use std::fs::remove_file;
+use std::{fs::remove_file, path::PathBuf};
 
 const CATEGORIES: [&str; 5] = [
     "Commodore Amiga - WHDLoad - Demos (*).zip",
@@ -23,23 +23,23 @@ pub fn find_local_files() -> Collection {
     files
 }
 
-pub fn remove_old_dats() {
+pub fn remove_old_dats(remove_old_files: bool) {
     for cat in CATEGORIES {
-        let mut dats: Vec<String> = glob(cat)
+        let mut dats: Vec<PathBuf> = glob(cat)
             .unwrap()
             .filter_map(|p| p.ok())
-            .map(|p| p.to_string_lossy().into())
             .collect();
-        dats.sort_unstable_by(|left, right| {
-            let split_left = left.split('-').rev();
-            let split_right = right.split('-').rev();
-            split_left.cmp(split_right)
-        });
+        dats.sort_unstable();
         if dats.pop().is_some() {
             for d in dats {
-                match remove_file(&d) {
-                    Ok(()) => println!("[DEL]: {}", d),
-                    Err(e) => println!("Failed to delete {}: {}", d, e),
+                let s = d.to_string_lossy();
+                if remove_old_files {
+                    match remove_file(&d) {
+                        Ok(()) => println!("[DEL]: {s}"),
+                        Err(e) => println!("Failed to delete {s}: {e}"),
+                    }
+                } else {
+                    println!("[KEEP]: {s}");
                 }
             }
         }

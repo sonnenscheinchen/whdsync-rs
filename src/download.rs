@@ -1,7 +1,6 @@
 use super::remote::create_ftp_stream;
 use super::whdload::WhdloadItem;
 use super::Credentials;
-use anyhow::{Error, Result};
 use std::sync::Mutex;
 use std::thread;
 use suppaftp::{FtpError, FtpStream, Status};
@@ -18,9 +17,9 @@ pub const FTP3: &str = "grandis.nu:21";
 
 pub fn download(
     to_download: Vec<WhdloadItem>,
-    mut ftp2: &mut FtpStream,
+    ftp2: &mut FtpStream,
     login: &Credentials,
-) -> Result<Vec<WhdloadItem>, Error> {
+) -> Result<Vec<WhdloadItem>, FtpError> {
     let num_downloads = to_download.len();
     let queue = Mutex::new(to_download);
 
@@ -28,44 +27,42 @@ pub fn download(
         let mut threads = vec![];
         let mut failed_downloads = vec![];
 
-        let primary = scope.spawn(|| run_downloader(&queue, &mut ftp2, true, "FTP2-1"));
-
         if num_downloads > 2 {
             threads.push(scope.spawn(|| {
-                create_ftp_stream(FTP1, &login)
+                create_ftp_stream(FTP1, login)
                     .and_then(|mut ftp1| run_downloader(&queue, &mut ftp1, false, "FTP1-1"))
             }));
         };
 
         if num_downloads > 4 && !login.is_anonymous {
             threads.push(scope.spawn(|| {
-                create_ftp_stream(FTP3, &login)
+                create_ftp_stream(FTP3, login)
                     .and_then(|mut ftp3| run_downloader(&queue, &mut ftp3, false, "FTP3-1"))
             }));
         };
 
         if num_downloads > 6 && !login.is_anonymous {
             threads.push(scope.spawn(|| {
-                create_ftp_stream(FTP2, &login)
+                create_ftp_stream(FTP2, login)
                     .and_then(|mut ftp2| run_downloader(&queue, &mut ftp2, false, "FTP2-2"))
             }));
         };
 
         if num_downloads > 8 && !login.is_anonymous {
             threads.push(scope.spawn(|| {
-                create_ftp_stream(FTP1, &login)
+                create_ftp_stream(FTP1, login)
                     .and_then(|mut ftp1| run_downloader(&queue, &mut ftp1, false, "FTP1-2"))
             }));
         };
 
         if num_downloads > 10 && !login.is_anonymous {
             threads.push(scope.spawn(|| {
-                create_ftp_stream(FTP3, &login)
+                create_ftp_stream(FTP3, login)
                     .and_then(|mut ftp3| run_downloader(&queue, &mut ftp3, false, "FTP3-2"))
             }));
         };
 
-        if let Err(e) = primary.join().unwrap() {
+        if let Err(e) = run_downloader(&queue, ftp2, true, "FTP2-1") {
             eprintln!("Primary downloader finished unexpectly.");
             eprintln!("{e}");
             {
@@ -92,37 +89,33 @@ pub fn run_downloader(
     ftp: &mut FtpStream,
     is_primary: bool,
     tag: &str,
-) -> Result<Requeue, Error> {
+) -> Result<Requeue, FtpError> {
     let mut requeue = vec![];
-    loop {
-        let maybe_item = { items.lock().unwrap().pop() };
-        if let Some(item) = maybe_item {
-            let path = item.get_remote_path();
-            println!("[{}]: {}", tag, path);
-            match ftp.retr_as_stream(&path) {
-                Ok(mut stream) => {
-                    item.save_file(&mut stream)?;
-                    ftp.finalize_retr_stream(stream)?;
-                }
-                Err(error) => {
-                    if !is_primary {
-                        requeue.push(item); // requeue silently
-                    } else {
-                        eprintln!("Failed to download {} from primary FTP server", path);
-                        return Err(error.into());
-                    }
-                    match error {
-                        FtpError::UnexpectedResponse(response) => match response.status {
-                            Status::FileUnavailable => {} // ignore, requeued earlier
-                            _ => return Err(FtpError::UnexpectedResponse(response).into()),
-                        },
-                        _ => return Err(error.into()),
-                    }
-                }
+    while let Some(item) = { items.lock().unwrap().pop() } {
+        let path = item.get_remote_path();
+        println!("[{tag}]: {path}");
+        match ftp.retr_as_stream(&path) {
+            Ok(mut stream) => {
+                item.save_file(&mut stream).unwrap();
+                ftp.finalize_retr_stream(stream)?;
             }
-        } else {
-            break;
-        }
+
+            Err(FtpError::UnexpectedResponse(response))
+                if response.status == Status::FileUnavailable && !is_primary =>
+            {
+                requeue.push(item)
+            }
+            Err(error) => {
+                if is_primary {
+                    eprintln!("Failed to download {path} from primary FTP server");
+                    return Err(error);
+                } else {
+                    requeue.push(item);
+                    eprintln!("{error}");
+                    break;
+                };
+            }
+        };
     }
     Ok(requeue)
 }

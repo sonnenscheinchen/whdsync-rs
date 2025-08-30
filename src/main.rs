@@ -51,10 +51,7 @@ fn main() -> Result<()> {
 
     to_download.sort_unstable();
 
-    let mut failed_downloads = match download(to_download, &mut ftp2, &login) {
-        Ok(f) => f,
-        Err(e) => return Err(e),
-    };
+    let mut failed_downloads = download(to_download, &mut ftp2, &login)?;
 
     failed_downloads.sort_unstable();
 
@@ -78,13 +75,13 @@ fn main() -> Result<()> {
         for f in localfiles.difference(&remotefiles) {
             let path = f.get_local_path();
             if remove_old_files {
-                println!("[DEL]: {}", path);
+                println!("[DEL]: {path}");
                 let _ = remove_file(&path);
             } else {
-                println!("[KEEP]: {}", path);
+                println!("[KEEP]: {path}");
             }
         }
-        remove_old_files.then(remove_old_dats);
+        remove_old_dats(remove_old_files);
         println!("Finished successfully.");
     } else {
         println!("Sync completed with errors.");
