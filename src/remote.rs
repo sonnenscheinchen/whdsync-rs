@@ -37,8 +37,10 @@ pub fn find_remote_files(stream: &mut FtpStream) -> Result<Collection> {
     for dat in dat_files {
         let local_file = PathBuf::from(dat.name());
         let data = if local_file.is_file() && local_file.metadata()?.len() == dat.size() as u64 {
+            eprintln!("Using local dat: {}", dat.name());
             read(local_file)?
         } else {
+            eprintln!("Downloading dat: {}", dat.name());
             let retr = stream.retr_as_buffer(dat.name())?.into_inner();
             write(dat.name(), &retr)?;
             retr

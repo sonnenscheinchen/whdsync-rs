@@ -32,6 +32,7 @@ fn main() -> Result<()> {
     let login = Credentials::from_env()
         .or(Credentials::from_netrc())
         .unwrap_or_default();
+    
     let mut ftp2 = create_ftp_stream(FTP2, &login)?;
 
     let t = thread::spawn(find_local_files);
@@ -51,7 +52,7 @@ fn main() -> Result<()> {
 
     to_download.sort_unstable();
 
-    let mut failed_downloads = download(to_download, &mut ftp2, &login)?;
+    let mut failed_downloads = download(to_download)?;
 
     failed_downloads.sort_unstable();
 
@@ -62,7 +63,7 @@ fn main() -> Result<()> {
     } else {
         println!("Trying to redownload {num_failed} files.");
         let queue = Mutex::new(failed_downloads);
-        run_downloader(&queue, &mut ftp2, false, "FTP2-1").map_or_else(
+        run_downloader(&queue, false, "FTP2-1").map_or_else(
             |e| {
                 eprintln!("{e}");
                 false
