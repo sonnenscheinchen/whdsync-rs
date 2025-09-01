@@ -19,7 +19,7 @@ pub fn find_local_files() -> Collection {
         .filter_map(|f| f.ok())
         .filter_map(|e| WhdloadItem::try_from(e).ok())
         .collect();
-    eprintln!("Collecting local files finished.");
+    eprintln!("Collected {} local files.", files.len());
     files
 }
 

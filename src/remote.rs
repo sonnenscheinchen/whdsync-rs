@@ -55,7 +55,7 @@ pub fn find_remote_files(stream: &mut FtpStream) -> Result<Collection> {
         remote_files.extend(t.join().unwrap()?);
     }
 
-    eprintln!("Collecting remote files finished.");
+    eprintln!("Collected {} remote files.", remote_files.len());
     Ok(remote_files)
 }
 
