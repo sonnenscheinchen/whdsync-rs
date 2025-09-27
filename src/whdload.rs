@@ -53,4 +53,7 @@ impl WhdloadItem {
             self.path.clone()
         }
     }
+    pub fn get_file_size(&self) -> u64 {
+        self.size
+    }
 }

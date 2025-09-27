@@ -1,13 +1,12 @@
-use super::{FTP1, FTP2, FTP3};
+use super::{FTP1, FTP2};
 use netrc::Netrc;
 use std::env::var;
 
-const FTP_SERVERS: &[&str] = &[FTP1, FTP2, FTP3];
+const FTP_SERVERS: &[&str] = &[FTP1, FTP2];
 
 pub struct Credentials {
     pub username: String,
     pub password: String,
-    pub is_anonymous: bool,
 }
 
 impl Credentials {
@@ -16,7 +15,6 @@ impl Credentials {
             (Ok(username), Ok(password)) => Some(Credentials {
                 username,
                 password,
-                is_anonymous: false,
             }),
             (_, _) => None,
         }
@@ -32,7 +30,6 @@ impl Credentials {
                 return Some(Credentials {
                     username: auth.login,
                     password: auth.password,
-                    is_anonymous: false,
                 });
             }
         }
@@ -45,7 +42,6 @@ impl Default for Credentials {
         Self {
             username: "ftp".into(),
             password: "amiga".into(),
-            is_anonymous: true,
         }
     }
 }
