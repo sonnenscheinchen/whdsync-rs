@@ -8,10 +8,8 @@ type Requeue = Vec<WhdloadItem>;
 
 // pub const FTP1: &str = "localhost:2121";
 // pub const FTP2: &str = "localhost:2122";
-// pub const FTP3: &str = "localhost:2123";
 pub const FTP1: &str = "ftp.grandis.nu:21";
 pub const FTP2: &str = "ftp2.grandis.nu:21";
-pub const FTP3: &str = "grandis.nu:21";
 pub const HTTP2: &str = "http://ftp.grandis.nu/turran/FTP/Retroplay%20WHDLoad%20Packs/";
 pub const HTTP1: &str = "http://ftp2.grandis.nu/turran/FTP/Retroplay%20WHDLoad%20Packs/";
 
